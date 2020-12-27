@@ -18,35 +18,35 @@ Definition eqb_string (x y : string) : bool :=
    -coada +          -break +                 -functii  ~          -referinte +
    -stiva +          -tipuri de variabile +   -variabile locale/globale~ *) 
 
-Inductive Expr1 :=
-| anum : nat -> Expr1
-| avar : string -> Expr1 
-| aplus : Expr1 -> Expr1 -> Expr1
-| amul : Expr1 -> Expr1 -> Expr1
-| adiv : Expr1 -> Expr1 -> Expr1
-| amod : Expr1 -> Expr1 -> Expr1
-| aminus : Expr1 -> Expr1 -> Expr1
-| btrue : Expr1
-| bfalse : Expr1
-| berror
-| blessthan : Expr1 -> Expr1 -> Expr1
-| bgrthan : Expr1 -> Expr1 -> Expr1
-| bor : Expr1 -> Expr1 ->Expr1
-| bnot : Expr1 -> Expr1
-| band : Expr1 -> Expr1 -> Expr1
-| bxor : Expr1 -> Expr1 -> Expr1
-| bnand: Expr1 -> Expr1 -> Expr1
-| bnor: Expr1 -> Expr1 -> Expr1
-| nxnor : Expr1 -> Expr1 -> Expr1
-.
+Inductive AExp :=
+| anum : nat -> AExp
+| avar : string -> AExp
+| aplus : AExp -> AExp -> AExp
+| amul : AExp -> AExp -> AExp
+| adiv : AExp -> AExp -> AExp
+| amod : AExp -> AExp -> AExp
+| asub : AExp -> AExp -> AExp.
 
-Coercion anum : nat >-> Expr1.
-Coercion avar : string >-> Expr1.
+Coercion anum : nat >-> AExp.
+Coercion avar : string >-> AExp.
 Notation "A +' B" := (aplus A B) (at level 48).
 Notation "A *' B" := (amul A B) (at level 46).
-Notation "A -' B" := (aminus A B) (at level 48).
+Notation "A -' B" := (asub A B) (at level 48).
 Notation "A %' B" := (amod A B) (at level 46).
 Notation "A /' B" := (adiv A B) (at level 46).
+Inductive BExp :=
+| btrue : BExp
+| bfalse : BExp
+| berror
+| blessthan : AExp -> AExp -> BExp
+| bvar : string -> BExp
+| bgrthan : AExp -> AExp -> BExp
+| bor : BExp -> BExp ->BExp
+| bnot : BExp -> BExp
+| band : BExp -> BExp -> BExp
+| bxor : BExp -> BExp -> BExp
+| bnand: BExp -> BExp -> BExp
+| bnor: BExp -> BExp -> BExp.
 
 Notation "A <=' B" := (blessthan A B) (at level 53).
 Notation "A >=' B" := (bgrthan A B) (at level 53).
@@ -65,24 +65,46 @@ Inductive case:=
 | case1: nat->Type-> case.
 
 Inductive Stmt :=
-| assignment : string -> Expr1 -> Stmt
+| assignment : string -> AExp -> Stmt
 | assignment1 : string -> Stmt
-| assignmentb : string -> Expr1 -> Stmt
+| assignmentb : string -> BExp -> Stmt
 | referinta : string -> string -> Stmt
 | sequence : Stmt -> Stmt -> Stmt
-| while : Expr1 -> Stmt -> Stmt
-| ifelse : Expr1 -> Stmt -> Stmt -> Stmt
-| ifthen : Expr1 -> Stmt -> Stmt
-| dowhile : Stmt -> Expr1 -> Stmt
-| breakwhile : Expr1 -> Stmt -> string -> Stmt
-| breakwhile1 : Expr1 -> Stmt -> string -> Stmt -> Stmt 
-| breakif : Expr1 -> string -> Stmt
-| breakif1: Expr1 -> Stmt -> string -> Stmt
+| while : BExp -> Stmt -> Stmt
+| ifelse : BExp -> Stmt -> Stmt -> Stmt
+| ifthen : BExp -> Stmt -> Stmt
+| dowhile : Stmt -> BExp -> Stmt
+| breakwhile : BExp -> Stmt -> string -> Stmt
+| breakwhile1 : BExp -> Stmt -> string -> Stmt -> Stmt 
+| breakif : BExp -> string -> Stmt
+| breakif1: BExp -> Stmt -> string -> Stmt
 | comment : string -> Stmt
 | apelfct: string -> list string -> Stmt
 | switchdef : string -> list Stmt -> Stmt.
 Check switchdef.
+Inductive ErrorNat :=
+  | error_nat : ErrorNat
+  | num : nat -> ErrorNat.
 
+Inductive ErrorBool :=
+  | error_bool : ErrorBool
+  | boolean : bool -> ErrorBool.
+
+Coercion num: nat >-> ErrorNat.
+Coercion boolean: bool >-> ErrorBool.
+
+Inductive Result :=
+  | err_undecl : Result
+  | err_assign : Result
+  | default : Result
+  | res_nat : ErrorNat -> Result
+  | res_bool : ErrorBool -> Result.
+
+Scheme Equality for Result.
+Definition Env := string -> Result.
+
+(* Initial environment *)
+Definition env : Env := fun x => err_undecl.
 (*Definition switch1:=(switchdef "var" (4  ("s"::=3) ) ) .*)
 
 Notation " 'if1' '(' A ')'  'then1' B" :=(ifthen A B) (at level 96).
@@ -99,8 +121,9 @@ Notation " x ::=& y" :=(referinta x y)(at level 49).
 Notation " '/*' C '*/' " := (comment C )(at level 96).
 
 
+(*
 Definition switch1:=(switchdef "var"   [ "m"::=8 ; "n"::=9 ] ) .
-
+*)
 Check "x"::=& "y".
 Check if1 ( btrue ) then1 ("x"::=3). 
 Check For1 ( "x"::=13 ; "x" <=' 20 ; "x"::="x"+'1 ) { ("s"::="s"+'4) } .
@@ -122,55 +145,33 @@ Check (
 
 Definition stiva:= list nat.
 
-Inductive VNat :=
-| v_nat : VNat
-| num : nat -> VNat.
-
-
-Inductive VBool :=
-| v_bool : VBool
-| boolean : bool -> VBool. 
-
-Coercion num: nat >-> VNat.
-Coercion boolean: bool >-> VBool.
 Check (boolean true).
-Check v_bool.
-Inductive result :=
-| nedecl : result
-| neatr : result 
-| c_nat : VNat -> result
-| c_bool : VBool ->result
-| default : result
-| code : Stmt-> result.
 
 
 Inductive lista: Type := 
 | nil: lista
-| li: result -> lista -> lista.
+| li: Result -> lista -> lista.
 
-Check c_nat(2).
-Definition Env := string -> result.
-Definition env : Env:= fun x => nedecl.
 
 (* stiva*) 
 Inductive opstiva:=
 | push_nr : nat ->opstiva
 | pop : opstiva
-| push_var : result -> opstiva.
+| push_var : Result -> opstiva.
 
-Check (push_var (c_bool true) ).
+Check (push_var (res_bool (boolean true)) ).
 
 (*coada *)
 Inductive coada: Type :=
 | nil1 : coada
 | cd : nat -> coada -> coada
-| add : coada -> nat -> coada
+| addc : coada -> nat -> coada
 | rm : coada.
 
 Check nil1.
 Notation " x c> y " := (cd x y ) ( at level 60).
 Check ( 2 c> (3 c> (4 c> nil1))). 
-Check add (2 c> (3 c> (4 c> nil1))) 4.
+Check addc (2 c> (3 c> (4 c> nil1))) 4.
 Inductive Mem :=
   | mem_default : Mem
   | offset : nat -> Mem.
@@ -181,7 +182,7 @@ Scheme Equality for Mem.
 Definition Env1 := string -> Mem.
 
 (* Memory Layer *)
-Definition MemLayer := Mem -> result.
+Definition MemLayer := Mem -> Result.
 
 (* Stack *)
 Definition Stack := list Env.
@@ -190,18 +191,150 @@ Definition Stack := list Env.
 Inductive Config :=
   | config : nat -> Env -> MemLayer -> Stack -> Config.
 
-Inductive program :=
-| main : Stmt -> program
-| decl_fun : string -> list string -> Stmt -> result -> program -> program
-| decl_var_glob : string -> result -> program. 
+
+(* operatii cu stringuri *)
+Inductive stringop :=
+| sstring : string -> stringop
+| sconc : string -> string -> stringop
+| scmp : string -> string -> stringop
+| strcpy : string -> string -> stringop.
+Fixpoint length (s : string) : nat :=
+  match s with
+  | EmptyString => 0
+  | String c s' => S (length s')
+  end.
+Compute length "salut".
+Check "x"::b= btrue.
+Check "x"::=10.
 
 
-Check  ([ 2 ]).
-Notation " 'var_gl' x ':g=' y " := (decl_var_glob x y)(at level 40). 
-Check var_gl "x" :g= (c_bool (boolean true)).
-Check main ("x"::=10).
-Check "n"::=10.
 
-Check decl_fun ("prim") ( ["m" ; "n"] ) ("n"::=10)(c_bool (boolean true))
+(*semantica*)
 
-(main ("x"::=10)).
+Definition check_eq_over_types (t1 : Result)(t2 : Result) : bool :=
+  match t1 with
+  | err_assign => match t2 with 
+                   | err_assign => true
+                   | _ => false
+                   end
+  | err_undecl => match t2 with 
+                   | err_undecl => true
+                   | _ => false
+                   end
+| res_nat _x => match t2 with 
+                   | res_nat _y=> true
+                   | _ => false
+                   end
+| res_bool _b => match t2 with 
+                   | res_bool _c => true
+                   | _ => false
+                   end
+| default => match t2 with 
+                   | default => true
+                   | _ => false
+                   end
+
+end.
+
+Compute (check_eq_over_types (res_nat 1000) (res_nat 100)). (* true *)
+Compute (check_eq_over_types err_undecl (res_nat 100)). (* false *)
+
+Definition update (env: Env) (x: string) (v:Result) :Env :=
+ fun y => 
+    if ( eqb y x )
+    then   
+      if( andb (check_eq_over_types err_undecl (env y)) (negb (check_eq_over_types default v)))
+      then err_undecl
+      else
+        if (andb (check_eq_over_types err_undecl (env y)) (check_eq_over_types v (env y)) )
+        then v
+        else err_undecl
+    else (env y).
+Definition env2 : Env := fun x => err_undecl.
+Compute (update (update env2 "y" (default))).
+Definition Env3 := string -> Mem.
+Definition env4 : Env3 := fun x => mem_default.
+Definition update_env (env: Env3) (x: string) (n: Mem) : Env3 :=
+  fun y =>
+      (* If the variable has assigned a default memory zone, 
+         then it will be updated with the current memory offset *)
+      if (andb (string_beq x y ) (Mem_beq (env4 y) mem_default))
+      then
+        n
+      else
+        (env y).
+
+Compute( update_env env4  "x"  mem_default).
+Compute( update_env env4  "x" (offset 5) ).
+Compute ( update_env env4  "x" (offset 5)) "x".
+Compute (env4 "z"). 
+
+
+Definition update_mem (mem :MemLayer) (env4 :Env3) (x: string) (type : Mem) (v:Result) : MemLayer:=
+ fun y =>
+    if (andb (Mem_beq y type) (Mem_beq (env4 x) type))
+    then 
+        if(andb (check_eq_over_types err_undecl (mem y)) (check_eq_over_types default v))
+        then default
+        else
+            if(orb (check_eq_over_types default (mem y)) (check_eq_over_types v (mem y)))
+            then v
+            else err_undecl
+    else (mem y).
+
+Definition mem : MemLayer := fun x => err_undecl.
+Compute (update_mem mem env4 "sal" (offset 20) (res_nat (num 10))).
+Compute update_mem mem env4 "sal" mem_default default.
+
+
+Definition plus_ErrorNat (n1 n2 :ErrorNat) : ErrorNat :=
+  match n1, n2 with
+    | error_nat, _ => error_nat
+    | _, error_nat => error_nat
+    | num v1, num v2 => num (v1 + v2)
+    end.
+
+Definition sub_ErrorNat (n1 n2 : ErrorNat) : ErrorNat :=
+  match n1, n2 with
+    | error_nat, _ => error_nat
+    | _, error_nat => error_nat
+    | num n1, num n2 => if Nat.ltb n1 n2
+                        then error_nat
+                        else num (n1 - n2)
+    end.
+
+Definition mul_ErrorNat (n1 n2 : ErrorNat) : ErrorNat :=
+  match n1, n2 with
+    | error_nat, _ => error_nat
+    | _, error_nat => error_nat
+    | num v1, num v2 => num (v1 * v2)
+    end.
+
+Definition div_ErrorNat (n1 n2 : ErrorNat) : ErrorNat :=
+  match n1, n2 with
+    | error_nat, _ => error_nat
+    | _, error_nat => error_nat
+    | _, num 0 => error_nat
+    | num v1, num v2 => num (Nat.div v1 v2)
+    end.
+
+Definition mod_ErrorNat (n1 n2 : ErrorNat) : ErrorNat :=
+  match n1, n2 with
+    | error_nat, _ => error_nat
+    | _, error_nat => error_nat
+    | _, num 0 => error_nat
+    | num v1, num v2 => num (v1 - v2 * (Nat.div v1 v2))
+    end.
+Fixpoint aeval_fun (a : AExp) (env : Env) : ErrorNat :=
+  match a with
+  | avar v => match (env v) with
+                | res_nat n => n
+                | _ => error_nat
+                end
+  | anum v => v
+  | aplus a1 a2 => (plus_ErrorNat (aeval_fun a1 env) (aeval_fun a2 env))
+  | amul a1 a2 => (mul_ErrorNat (aeval_fun a1 env) (aeval_fun a2 env))
+  | asub a1 a2 => (sub_ErrorNat (aeval_fun a1 env) (aeval_fun a2 env))
+  | adiv a1 a2 => (div_ErrorNat  (aeval_fun a1 env) (aeval_fun a2 env))
+  | amod a1 a2 => (mod_ErrorNat (aeval_fun a1 env) (aeval_fun a2 env))
+  end.
