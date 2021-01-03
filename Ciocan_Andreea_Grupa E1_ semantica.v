@@ -14,12 +14,10 @@ Definition eqb_string (x y : string) : bool :=
   if string_dec x y then true else false.
   
 (* Instructiuni adaugate in plus fata de laborator : 
-   -switch +         -xor, xnor, nand nor++     -comentarii ++            -expresii lambda ++
-   -break ++         -do-while ++               -expresii lambda ++       -functii  +         
-   -stiva ++         -tipuri de variabile ++    -siruri de caractere++    -variabile locale/globale+ 
+   -switch++         -xor, xnor, nand nor++     -comentarii ++          
+   -break ++         -do-while ++               -expresii lambda ++              
+   -stiva ++         -tipuri de variabile ++    -siruri de caractere++    
    
-  + -> sintaxa
-  ++ ->semantica 
 *) 
 
 Inductive AExp :=
@@ -127,7 +125,6 @@ Inductive Stmt :=
 | while_break_st : BExp -> Stmt -> string -> Stmt -> Stmt 
 | comment : string -> Stmt
 | apelfct: string -> list string -> Stmt
-| cases: AExp -> Stmt ->Stmt
 | switchdef_base : string -> AExp -> Stmt -> Stmt
 | switchdef : AExp -> Stmt ->Stmt
 | switchtry : string -> Pair AExp Stmt -> Stmt
@@ -652,12 +649,40 @@ Inductive lambdaf:=
 | lbd : string-> Stmt -> Result -> lambdaf.
 
 
+Inductive cases:=
+| baz: Result -> Stmt -> cases
+| lnil.
+
+Definition first(s:cases): Result :=
+match s with
+| baz a b => a
+| lnil => res_nat 0
+end.
+
+Definition second(s:cases) : Stmt:=
+match s with
+| baz a b => b
+| lnil => empty_st "err"
+end.
+
+Compute first (baz (res_nat 3)("x"::n=4)).
+Compute second (baz (res_nat 3)("x"::n=4)).
+Definition case2(l : list cases): cases :=
+match l with
+| [] => lnil
+| x :: _ => x
+end.
+Compute first (case2 [ (baz (res_nat 3) ("x"::n=4) ) ;(baz (res_nat 7) ("x"::n=84) ) ]).
+
 Inductive prglambda :=
 | simp: Stmt->prglambda
-| lamb: Stmt -> lambdaf -> Stmt -> prglambda.
+| lamb: Stmt -> lambdaf -> Stmt -> prglambda
+| pr_sw: Stmt -> string -> list cases -> prglambda .
    
+Check pr_sw (int1 "x";; ("x"::n=2)) "x" [ (baz (res_nat 3) ("x"::n=4) ) ;(baz (res_nat 3) ("x"::n=4) ) ].
 Reserved Notation  "s -+<{ sigma }>+- sigma'"(at level 50).
 
+Scheme Equality for AExp.
 Inductive evlamb : prglambda -> Env -> Env -> Prop :=
 | e_simpl : forall s sigma sigma' ,
       eval s sigma sigma' ->
@@ -669,7 +694,38 @@ Inductive evlamb : prglambda -> Env -> Env -> Prop :=
       sigma''''' = update sigma'''' "rezultat" res ->      
       eval st2 sigma' sigma'''->
       lamb st (name st1 res) (st2) -+<{ sigma }>+- sigma'''''
+| e_switch_true : forall stm var valoare list_cases val_x b sigma sigma' sigma'',
+      eval stm sigma sigma' ->
+      valoare = sigma' var ->
+      val_x = first (case2 list_cases )->
+      b = Result_beq val_x valoare ->
+      b = true ->
+      eval (second (case2 list_cases )) sigma' sigma'' ->
+      pr_sw stm var list_cases -+<{ sigma }>+- sigma''
+| e_switch_false : forall stm var valoare list_cases val_x b sigma sigma' sigma'',
+      eval stm sigma sigma' ->
+      valoare = sigma' var ->
+      val_x = first (case2 list_cases )->
+      b = Result_beq val_x valoare ->
+      b = false ->
+      eval (second (case2 list_cases )) sigma' sigma'' ->
+      pr_sw stm var list_cases -+<{ sigma }>+- sigma
 where "s -+<{ sigma }>+- sigma'":= (evlamb s sigma sigma').
+
+Create HintDb my_hints.
+Hint Constructors aeval : my_hints.
+Hint Constructors beval : my_hints.
+Hint Constructors eval : my_hints.
+Hint Constructors evlamb : my_hints.
+
+Hint Unfold update : my_hints.
+Definition program_switch :=pr_sw (int1 "x";; ("x"::n=2)) "x" [ (baz (res_nat 2) ("x"::n=4) )].
+Example ex_sw1: exists state, program_switch -+<{ env }>+- state /\ state "x"=(res_nat 4).
+Proof.
+eexists. split. unfold program_switch. eapply e_switch_true . eapply e_seq. eapply e_nat_decl. eauto.
+eapply e_nat_assign. eapply const. eauto. eauto. eauto. eauto. eauto. eapply e_nat_assign. eapply const.
+eauto. simpl. unfold update. eauto. 
+Qed.
 
 Definition program_main :=(simp ( int1 "x" ;; ("x"::n=10) ) ).
 
