@@ -681,6 +681,14 @@ Inductive prglambda :=
    
 Check pr_sw (int1 "x";; ("x"::n=2)) "x" [ (baz (res_nat 3) ("x"::n=4) ) ;(baz (res_nat 3) ("x"::n=4) ) ].
 Reserved Notation  "s -+<{ sigma }>+- sigma'"(at level 50).
+  Hypothesis eq_dec : forall x y : cases, {x = y}+{x <> y}.
+
+  Fixpoint remove (x : cases) (l : list cases) : list cases :=
+    match l with
+      | [] => []
+      | y::tl => if (eq_dec x y) then remove x tl else y::(remove x tl)
+    end.
+Definition lista:=[6;4].
 
 Scheme Equality for AExp.
 Inductive evlamb : prglambda -> Env -> Env -> Prop :=
@@ -702,14 +710,14 @@ Inductive evlamb : prglambda -> Env -> Env -> Prop :=
       b = true ->
       eval (second (case2 list_cases )) sigma' sigma'' ->
       pr_sw stm var list_cases -+<{ sigma }>+- sigma''
-| e_switch_false : forall stm var valoare list_cases val_x b sigma sigma' sigma'',
+| e_switch_false : forall stm var valoare list_cases val_x b sigma sigma' list2,
       eval stm sigma sigma' ->
       valoare = sigma' var ->
       val_x = first (case2 list_cases )->
       b = Result_beq val_x valoare ->
       b = false ->
-      eval (second (case2 list_cases )) sigma' sigma'' ->
-      pr_sw stm var list_cases -+<{ sigma }>+- sigma
+      list2 = remove (case2 list_cases) list_cases ->
+      pr_sw stm var list2 -+<{ sigma }>+- sigma
 where "s -+<{ sigma }>+- sigma'":= (evlamb s sigma sigma').
 
 Create HintDb my_hints.
@@ -1097,4 +1105,3 @@ Proof.
 eexists. split. eapply e_main. eapply e_seq. eapply e_nat_decl. eauto. eapply e_nat_assign.
 eapply const. auto. auto.
 Qed.
-  
